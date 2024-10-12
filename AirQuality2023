@@ -1,0 +1,104 @@
+# Carregar as bibliotecas necessárias
+library(ggplot2)
+library(dplyr)
+
+# Carregar os dados de 2023
+dados_2023 <- read_csv("Desktop/QualidadedoAr/DadosQualidade2023.csv")
+
+# Renomear as colunas para consistência
+colnames(dados_2023) <- c("DateTime", "Nitrogen_Dioxide")
+
+# Converter a coluna 'DateTime' para o formato de data-hora
+dados_2023$DateTime <- as.POSIXct(dados_2023$DateTime, format = "%d/%m/%Y %H:%M:%S", tz = "GMT")
+
+# Converter a coluna 'Nitrogen_Dioxide' para numérico
+dados_2023$Nitrogen_Dioxide <- as.numeric(dados_2023$Nitrogen_Dioxide)
+
+# Adicionar colunas de Ano e Mês para facilitar a agregação
+dados_2023 <- dados_2023 %>%
+  mutate(
+    Year = format(DateTime, "%Y"),
+    Month = format(DateTime, "%m")
+  )
+
+# Calcular a média mensal de NO₂
+media_mensal <- dados_2023 %>%
+  group_by(Year, Month) %>%
+  summarise(Media_NO2 = mean(Nitrogen_Dioxide, na.rm = TRUE)) %>%
+  ungroup()
+
+# Resumo estatístico para 2023
+resumo_2023 <- dados_2023 %>%
+  summarise(
+    Mean = mean(Nitrogen_Dioxide, na.rm = TRUE),
+    Median = median(Nitrogen_Dioxide, na.rm = TRUE),
+    Std_Dev = sd(Nitrogen_Dioxide, na.rm = TRUE),
+    Minimum = min(Nitrogen_Dioxide, na.rm = TRUE),
+    Maximum = max(Nitrogen_Dioxide, na.rm = TRUE),
+    Quartile1 = quantile(Nitrogen_Dioxide, 0.25, na.rm = TRUE),
+    Quartile3 = quantile(Nitrogen_Dioxide, 0.75, na.rm = TRUE)
+  )
+
+# Exibir o resumo estatístico
+cat("Resumo Estatístico para 2023:\n")
+print(resumo_2023)
+
+# Criar uma coluna combinada "Year-Month" para visualização
+media_mensal <- media_mensal %>%
+  mutate(YearMonth = paste(Year, Month, sep = "-"))
+
+# Gráfico de barras das médias mensais de NO₂
+ggplot(media_mensal, aes(x = YearMonth, y = Media_NO2)) +
+  geom_bar(stat = "identity", fill = "lightblue", color = "black") +
+  labs(title = "Monthly Average of Nitrogen Dioxide  (NO₂) in Vitória-ES, Brazil- 2023",
+       x = "Year-Month",
+       y = "NO₂ Average (µg/m³)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Histograma dos níveis de NO₂ para 2023
+ggplot(dados_2023, aes(x = Nitrogen_Dioxide)) +
+  geom_histogram(binwidth = 1, fill = "lightblue", color = "black") +
+  labs(title = "Distribution of  NO₂ Levels in 2023",
+       x = "Level NO₂ (µg/m³)",
+       y = "Frequncy") +
+  theme_minimal()
+
+# Gráfico de Boxplot dos níveis de NO₂ por mês em 2023
+ggplot(dados_2023, aes(x = Month, y = Nitrogen_Dioxide)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Boxplot of No2 Levels by Monthly in 2023",
+       x = "Months",
+       y = " NO₂ Level (µg/m³)") +
+  theme_minimal()
+
+# Resumo estatístico detalhado para 2023 (caso haja necessidade de múltiplos anos no futuro)
+resumo_estatistico <- dados_2023 %>%
+  group_by(Year) %>%
+  summarise(
+    Mean = mean(Nitrogen_Dioxide, na.rm = TRUE),
+    Median = median(Nitrogen_Dioxide, na.rm = TRUE),
+    Std_Dev = sd(Nitrogen_Dioxide, na.rm = TRUE),
+    Minimum = min(Nitrogen_Dioxide, na.rm = TRUE),
+    Maximum = max(Nitrogen_Dioxide, na.rm = TRUE),
+    Quartile1 = quantile(Nitrogen_Dioxide, 0.25, na.rm = TRUE),
+    Quartile3 = quantile(Nitrogen_Dioxide, 0.75, na.rm = TRUE)
+  )
+
+# Criar um gráfico mostrando todas as estatísticas
+ggplot(resumo_estatistico, aes(x = Year)) +
+  geom_point(aes(y = Mean, color = "Mean"), size = 4) +
+  geom_point(aes(y = Median, color = "Median"), size = 4) +
+  geom_errorbar(aes(ymin = Mean - Std_Dev, ymax = Mean + Std_Dev, color = "Standard Deviation"), width = 0.2) +
+  geom_segment(aes(x = Year, xend = Year, y = Minimum, yend = Maximum, color = "Range (Min-Max)"), linetype = "dotted") +
+  geom_segment(aes(x = Year, xend = Year, y = Quartile1, yend = Quartile3, color = "Quartiles (Q1-Q3)"), linetype = "solid", size = 2) +
+  scale_color_manual(name = "Estatísticas", 
+                     values = c("Mean" = "blue", 
+                                "Median" = "red", 
+                                "Standard Deviation" = "green", 
+                                "Range  (Min-Max)" = "orange", 
+                                "Quartiles (Q1-Q3)" = "purple")) +
+  labs(title = "Statiscal Summary of NO2 Levels in 2023",
+       x = "Year",
+       y = "NO₂ Level (µg/m³)") +
+  theme_minimal()
